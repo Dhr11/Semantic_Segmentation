@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import torch
 import torch.nn as nn
@@ -39,6 +40,9 @@ def train():
     train_losses = {}
     #train_avg_losses= {} 
     val_losses = {}
+    val_iou = {}
+    train_iou = {}
+    iou_interval = val_step*2
     model.cuda()
     while(epoch<total_epochs):
         epoch_loss=0
@@ -57,11 +61,12 @@ def train():
             #cur_avg_loss = max([0,epoch])*cur_avg_loss + loss.item()
             #cur_avg_loss /= (iter+1)
             epoch_loss+=loss.item()
-        train_losses[epoch] = epoch_loss#loss.item()
+        train_losses[epoch] = np.mean(epoch_loss)#loss.item()
         #train_avg_losses[iter] = cur_avg_loss
         if epoch % train_step==0:
-            print("iter:",epoch," loss:",epoch_loss)
+            print("iter:",epoch," loss:",np.mean(epoch_loss))
         if epoch % val_step==0: #or (iter+1)==total_iters:
+            calc_iou = epoch % iou_interval==0
             print("val_step")
             model.eval()
             conf_mat = custom_conf_matrix([i for i in range(0,21)],21)
@@ -72,12 +77,32 @@ def train():
                     vout = model(imgs)
                     
                     vloss = criterion(vout,vlbl)
-                    pred = vout.data.max(1)[1].cpu().numpy()
-                    gt = vlbl.data.cpu().numpy()
-                    conf_mat.update_step(gt.flatten(), pred.flatten())
+                    if calc_iou:
+                        pred = vout.data.max(1)[1].cpu().numpy()
+                        gt = vlbl.data.cpu().numpy()
+                        conf_mat.update_step(gt.flatten(), pred.flatten())
                     val_loss += vloss.item()
-                print("epoch:",epoch," val loss:",val_loss,"mean iou ",conf_mat.compute_mean_iou())
-                val_losses[epoch] = val_loss
+                val_losses[epoch] = np.mean(val_loss)
+                
+                if calc_iou:
+                    score = conf_mat.compute_mean_iou()
+                    print("epoch:",epoch," val loss:",np.mean(val_loss),"mean iou ",score)
+                    if score>best_iou:
+                        best_iou = score
+                        state = {
+                            "epoch": epoch + 1,
+                            "model_state": model.state_dict(),
+                            "optimizer_state": optimizer.state_dict(),
+                            "best_iou": best_iou,
+                        }
+                        save_path = os.path.join(
+                            "./",
+                            "{}_optimizer_{}_epoch{}_best_model.pkl".format("Unet_pascalVOC", state[optimizer_state],epoch),
+                        )
+                        torch.save(state, save_path)
+                else:
+                    print("epoch:",epoch," val loss:",np.mean(val_loss))            
+                conf_mat.reset()
         epoch+=1            
     print(train_losses,val_losses)
 if __name__ == "__main__":
