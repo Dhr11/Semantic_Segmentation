@@ -1,3 +1,9 @@
+"""
+Creator:
+Dhruuv Agarwal
+Github: Dhr11
+"""
+
 import os
 import numpy as np
 import torch
@@ -29,13 +35,13 @@ def train():
     print(device)
     model = model.to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), weight_decay=5*1e-4, lr = 0.00001, momentum=0.9)
+    optimizer = torch.optim.SGD(model.parameters(), weight_decay=5*1e-4, lr = 0.0001, momentum=0.9)
 
     best_iou = -100
     epoch = 0
-    total_epochs = 20
+    total_epochs =100000 
     train_step=5
-    val_step =1
+    val_step =10
     #cur_avg_loss = 0
     train_losses = {}
     #train_avg_losses= {} 
@@ -61,10 +67,10 @@ def train():
             #cur_avg_loss = max([0,epoch])*cur_avg_loss + loss.item()
             #cur_avg_loss /= (iter+1)
             epoch_loss+=loss.item()
-        train_losses[epoch] = np.mean(epoch_loss)#loss.item()
+        train_losses[epoch] = epoch_loss/len(train_loader)#loss.item()
         #train_avg_losses[iter] = cur_avg_loss
         if epoch % train_step==0:
-            print("iter:",epoch," loss:",np.mean(epoch_loss))
+            print("epoch:",epoch," loss:",epoch_loss/len(train_loader))
         if epoch % val_step==0: #or (iter+1)==total_iters:
             calc_iou = epoch % iou_interval==0
             print("val_step")
@@ -82,11 +88,11 @@ def train():
                         gt = vlbl.data.cpu().numpy()
                         conf_mat.update_step(gt.flatten(), pred.flatten())
                     val_loss += vloss.item()
-                val_losses[epoch] = np.mean(val_loss)
+                val_losses[epoch] = val_loss/len(val_loader)
                 
                 if calc_iou:
                     score = conf_mat.compute_mean_iou()
-                    print("epoch:",epoch," val loss:",np.mean(val_loss),"mean iou ",score)
+                    print("epoch:",epoch," val loss:",val_loss/len(val_loader),"mean iou ",score)
                     if score>best_iou:
                         best_iou = score
                         state = {
@@ -97,14 +103,14 @@ def train():
                         }
                         save_path = os.path.join(
                             "./",
-                            "{}_optimizer_{}_epoch{}_best_model.pkl".format("Unet_pascalVOC", state[optimizer_state],epoch),
+                            "{}_epoch{}_best_model.pkl".format("Unet_pascalVOC", epoch),
                         )
                         torch.save(state, save_path)
                 else:
-                    print("epoch:",epoch," val loss:",np.mean(val_loss))            
+                    print("epoch:",epoch," val loss:",val_loss/len(val_loader))            
                 conf_mat.reset()
         epoch+=1            
-    print(train_losses,val_losses)
+    print(train_losses,val_losses,val_iou)
 if __name__ == "__main__":
    
     #run_id = random.randint(1, 100000)
