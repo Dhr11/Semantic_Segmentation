@@ -1,3 +1,9 @@
+"""
+Creator:
+Dhruuv Agarwal
+Github: Dhr11
+"""
+
 import os
 import numpy as np
 import torch
@@ -13,6 +19,13 @@ from PIL import Image
 from tqdm import tqdm
 from torch.utils import data
 
+
+"""
+
+bytescale and toimage functions are simplified versions from initial source code in scipy.misc-1.0.0
+
+These functions are used here as the current scipy version, have stopped supporting Image read, write and toimage functions.
+"""
 
 def bytescale(data, high=255, low=0):
     """
@@ -150,24 +163,7 @@ class VOCLoader(data.Dataset):
         self.setup(root)
     def __len__(self):
         return len(self.files[self.portion])    
-    """
-    def getvocpallete(self,num_cls):
-        n = num_cls
-        pallete = [0] * (n * 3)
-        for j in range(0, n):
-            lab = j
-            pallete[j * 3 + 0] = 0
-            pallete[j * 3 + 1] = 0
-            pallete[j * 3 + 2] = 0
-            i = 0
-            while (lab > 0):
-                pallete[j * 3 + 0] |= (((lab >> 0) & 1) << (7 - i))
-                pallete[j * 3 + 1] |= (((lab >> 1) & 1) << (7 - i))
-                pallete[j * 3 + 2] |= (((lab >> 2) & 1) << (7 - i))
-                i = i + 1
-                lab >>= 3
-        return pallete
-    """
+
     def setup(self,root):
         self.get_filenames(root)
         if not os.path.exists(os.path.join(root,"SegmentationClass/encoded/")):
@@ -180,7 +176,7 @@ class VOCLoader(data.Dataset):
                 label_mask = self.encode(imageio.imread(filepath,as_gray=False,pilmode="RGB"))
                 #label_mask = (label_mask * 255).astype(np.uint8)
                 lbl = toimage(label_mask,high=label_mask.max(),low=label_mask.min())#,mode="L")#, high=label_mask.max(), low=label_mask.min())
-                #lbl.putpalette(self.getvocpallete(256))
+                
                 imageio.imwrite(os.path.join(root,"SegmentationClass/encoded/",filename+".png"), lbl)
     def get_filenames(self,root):
         
